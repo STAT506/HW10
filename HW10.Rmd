@@ -1,0 +1,53 @@
+---
+title: "HW 10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(arm)
+library(lubridate)
+climbing <- read_csv("http://math.montana.edu/ahoegh/teaching/stat446/climbing_statistics.csv") %>% 
+  mutate(Route = if_else(Route == "Fuhrer's Finger", "Fuhrers Finger", Route)) %>%
+  mutate(Date = mdy(Date), month = month(Date)) %>%  group_by(month, Route) %>% 
+  summarise(attempted = sum(Attempted), succeeded = sum(Succeeded)) %>% 
+  ungroup() %>% filter(month %in% c(5,6,7)) %>% arrange(Route, month) %>%
+  filter(!Route %in% c("Curtis RIngraham Directge", "Edmonds HW", "Gibralter Chute", "Gibralter Ledges", "glacier only - no summit attempt", "Ingraham Direct","Kautz Headwall", "Liberty Wall", 'Mowich Face', "Nisqually Glacier", "Sunset RIngraham Directge",'Unknown', 'Tahoma Cleaver'))
+climbing <- climbing %>% mutate(failed = attempted - succeeded, month = factor(month))
+climbing
+```
+
+### 1. Hierarchical Logistic Regression (20 points)
+
+
+#### a. Data Viz (5 points)
+
+Create a set of data visualizations that show the success climbing probability as a function of month and route.
+
+
+#### b. Data Analysis (5 points)
+Fit a hierarchical logistic regression model where the intercept varies by Route.
+
+Discuss any differences in the point estimates of the model estimate success probability with the empirical success probabilities below.
+```{r}
+climbing %>% group_by(Route) %>% summarise(success_prob = sum(succeeded)/sum(attempted), total_attempts = sum(attempted)) 
+```
+
+
+#### c. Data Analysis (10 points)
+Compare and contrast the following two models. In particular, comment on the terms in the GLM model with extremely large variance; what is happening with those sitations and why does the hierarchical model not have huge standard errors too?
+
+
+```{r}
+glm_fit <- glm(cbind(succeeded, failed) ~ month *  Route, data = climbing, family = binomial)
+display(glm_fit)
+```
+
+```{r}
+glmer_fit <- glmer(cbind(succeeded, failed) ~ -1 + (month | Route), data = climbing, family = binomial)
+coef(glmer_fit)
+se.ranef(glmer_fit)
+```
+
